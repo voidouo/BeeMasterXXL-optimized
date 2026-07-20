@@ -4,7 +4,7 @@ local internet = require("internet")
 
 local usingPrefix = false
 local repo = "https://raw.githubusercontent.com/hxync/BeeMasterXXL/"
-local branch = "optimized-gtnh-2.9"
+local branch = "main"
 local paths = { "lib" }
 
 local scripts = {
