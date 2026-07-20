@@ -3,7 +3,7 @@ local filesystem = require("filesystem")
 local internet = require("internet")
 
 local usingPrefix = false
-local repo = "https://raw.githubusercontent.com/hxync/BeeMasterXXL/"
+local repo = "https://raw.githubusercontent.com/voidouo/BeeMasterXXL-optimized/"
 local branch = "main"
 local paths = { "lib" }
 
