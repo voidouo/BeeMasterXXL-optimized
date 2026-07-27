@@ -43,6 +43,15 @@ local toleranceLevel = { ["forestry.toleranceUp1"]="UP_1", ["forestry.toleranceU
 local toleranceDominance = { ["forestry.toleranceUp1"]=true, ["forestry.toleranceDown1"]=true, ["forestry.toleranceBoth1"]=true }
 --种族对应的最适温度与最适湿度
 local original_genes = {}
+local function normalizeEffect(effect)
+    if type(effect) ~= "string" then
+        return effect
+    end
+    return (effect:gsub("^forestry%.allele%.effect%.(%l)(%w*)", function(first, rest)
+        return "forestry.effect" .. first:upper() .. rest
+    end))
+end
+
 local function getOriginalGenes(stack, species, species2)
     species2 = species2 or species
     database.set(1, stack.name, 0, '{IsAnalyzed:1b,Genome:{Chromosomes:[0:{Slot:0b,UID0:"'..species..'",UID1:"'..species2..'"}]}}')
@@ -69,8 +78,7 @@ local function getOriginalGenes(stack, species, species2)
         flowerProvider = { individual.active.flowerProvider, individual.inactive.flowerProvider },--采蜜对象                        --有待修改
         fertility = { individual.active.fertility, individual.inactive.fertility },--生育能力
         territory = { (individual.active.territory[1] - 7) / 2, (individual.inactive.territory[1] - 7) / 2 },--活动范围
-        effect = { individual.active.effect:gsub("^forestry%.allele%.effect%.(%l)(%w*)", function(_1, _2) return "forestry.effect" .. _1:upper() .. _2 end),
-            individual.inactive.effect:gsub("^forestry%.allele%.effect%.(%l)(%w*)", function(_1, _2) return "forestry.effect" .. _1:upper() .. _2 end) },--特殊效果
+        effect = { normalizeEffect(individual.active.effect), normalizeEffect(individual.inactive.effect) },--特殊效果
         temperature = { temperatureLevel[individual.active.species.temperature], temperatureLevel[individual.inactive.species.temperature] },--温度
         temperatureTolerance = { individual.active.temperatureTolerance, individual.inactive.temperatureTolerance },--温度适应性
         humidity = { humidityLevel[individual.active.species.humidity], humidityLevel[individual.inactive.species.humidity] },--湿度
@@ -141,7 +149,7 @@ local function analyzeBee(stack)--返回值只有部分基因能正确表示显�
         flowerProvider = genes[10],--采蜜对象
         fertility = { fertilityLevel[genes[3][1]], fertilityLevel[genes[3][2]] },--生育能力
         territory = { territoryLevel[genes[12][1]], territoryLevel[genes[12][2]] },--活动范围
-        effect = genes[13],--特殊效果
+        effect = { normalizeEffect(genes[13][1]), normalizeEffect(genes[13][2]) },--特殊效果
         temperature = { temperatureLevel[original_genes[genes[0][1]].temperature], temperatureLevel[original_genes[genes[0][2]].temperature] },--温度
         temperatureTolerance = { toleranceLevel[genes[4][1]], toleranceLevel[genes[4][2]] },--温度适应性
         humidity = { humidityLevel[original_genes[genes[0][1]].humidity], humidityLevel[original_genes[genes[0][2]].humidity] },--湿度

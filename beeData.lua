@@ -159,6 +159,16 @@ function M.getDroneTag(species)
     if not template or not template.label then
         error("database无法生成蜂种模板: " .. tostring(species))
     end
+    -- The effect chromosome is independent from species. Prefer a drone that
+    -- carries the species' canonical effect instead of selecting by the other
+    -- template genes only.
+    local targetEffect
+    do
+        local ok, effect = pcall(M.getSpeedAndEffect, species)
+        if ok then
+            targetEffect = effect
+        end
+    end
     local droneFilter = {label = template.label}
     local droneList = me.enrichItems(me.getItems(droneFilter), droneFilter)
     for slot, stack in pairs(bot.inventory) do
@@ -167,47 +177,60 @@ function M.getDroneTag(species)
             if internal then table.insert(droneList, internal) end
         end
     end
-    if #droneList < 2 then
-        return droneList[1] and droneList[1].tag
+    if #droneList == 0 then
+        return nil
     end
     local scoreList = {}
+    local effectMatchList = {}
+    local hasEffectCandidate = false
     for i, drone in pairs(droneList) do
-        local score = 0
-        local droneGenes = analyzeGenes(drone)
-        local templateGenes = {
-            speed = data.speedLevel,
-            lifespan = 1,
-            flowering = 1,
-            flowerProvider = "extrabees.flower.rock",
-            fertility = 4,
-            territory = 1,
-            temperatureTolerance = "BOTH_5",
-            humidityTolerance = "BOTH_5",
-            nocturnal = true,
-            tolerantFlyer = true,
-            caveDwelling = true
-        }
-        for chromosome, gene in pairs(templateGenes) do
-            if droneGenes[chromosome][1] == gene then
-                score = score + 1
+        local ok, droneGenes = pcall(analyzeGenes, drone)
+        if ok and droneGenes and droneGenes.species and droneGenes.effect then
+            local score = 0
+            local templateGenes = {
+                speed = data.speedLevel,
+                lifespan = 1,
+                flowering = 1,
+                flowerProvider = "extrabees.flower.rock",
+                fertility = 4,
+                territory = 1,
+                temperatureTolerance = "BOTH_5",
+                humidityTolerance = "BOTH_5",
+                nocturnal = true,
+                tolerantFlyer = true,
+                caveDwelling = true
+            }
+            for chromosome, gene in pairs(templateGenes) do
+                if gene ~= nil and droneGenes[chromosome] then
+                    if droneGenes[chromosome][1] == gene then
+                        score = score + 1
+                    end
+                    if droneGenes[chromosome][2] == gene then
+                        score = score + 1
+                    end
+                    if droneGenes[chromosome][1] == droneGenes[chromosome][2] then
+                        score = score + 3
+                    end
+                end
             end
-            if droneGenes[chromosome][2] == gene then
-                score = score + 1
+            local effectMatch = targetEffect and (droneGenes.effect[1] == targetEffect or droneGenes.effect[2] == targetEffect)
+            if effectMatch then
+                -- Effect is required by purify(); make it the primary tie breaker.
+                score = score + 20
+                hasEffectCandidate = true
             end
-            if droneGenes[chromosome][1] == droneGenes[chromosome][2] then
-                score = score + 3
+            if droneGenes.species[2] ~= species then
+                score = score - 100
             end
-        end
-        if droneGenes.species[2] ~= species then
-            score = score - 100
-        end
-        if droneGenes.species[1] == species or droneGenes.species[2] == species then
-            scoreList[i] = score
+            if droneGenes.species[1] == species or droneGenes.species[2] == species then
+                scoreList[i] = score
+                effectMatchList[i] = effectMatch == true
+            end
         end
     end
     local bestIndex
     for i, score in pairs(scoreList) do
-        if not bestIndex or score > scoreList[bestIndex] then
+        if (not hasEffectCandidate or effectMatchList[i]) and (not bestIndex or score > scoreList[bestIndex]) then
             bestIndex = i
         end
     end

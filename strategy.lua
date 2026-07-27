@@ -15,6 +15,22 @@ local me = require("me")
 
 local chromosomeList = {"species", "speed", "lifespan", "fertility", "flowering", "flowerProvider", "territory", "effect", "temperatureTolerance", "humidityTolerance", "nocturnal", "tolerantFlyer", "caveDwelling"}
 
+local function getGene(slot, chromosome)
+    local item = slot and bot.inventory[slot]
+    local gene = item and item[chromosome]
+    if type(gene) ~= "table" or gene[1] == nil or gene[2] == nil then
+        return nil
+    end
+    return gene
+end
+
+local function formatGene(gene)
+    if not gene then
+        return "<missing>"
+    end
+    return tostring(gene[1]) .. "/" .. tostring(gene[2])
+end
+
 function M.mutate(princessSlot, droneSlot, targetSpecies, mutation)--单步突变
     --参与配对的杂交雄蜂被归为三类：亲代1纯合基因雄蜂（11型）、亲代2纯合基因雄蜂（22型）、双亲杂合基因雄蜂（12型）
     --突变过程存在种族基因存在丢失的可能，此时将返回nil（附带退回的备选雄蜂槽位），待上级函数重新获取可用母本后继续。
@@ -258,16 +274,28 @@ function M.purify(princessSlot, droneSlot, targetGenes, assistantDroneSlot, labe
         error("错误的调用strategy("..tostring(princessSlot)..","..tostring(droneSlot)..","..tostring(assistantDroneSlot)..","..tostring(targetGenes.species)..")，样板雄蜂的生育基因必须为纯合4x")
     end
     for _, chromosome in pairs(chromosomeList) do
-        local gene = bot.inventory[princessSlot][chromosome]
+        local gene = getGene(princessSlot, chromosome)
+        local droneGene = getGene(droneSlot, chromosome)
+        local assistantGene = getGene(assistantDroneSlot, chromosome)
+        if not gene or not droneGene or not assistantGene then
+            error("missing bee gene: chromosome=" .. tostring(chromosome)
+                .. ", princess=" .. formatGene(gene)
+                .. ", drone=" .. formatGene(droneGene)
+                .. ", assistant=" .. formatGene(assistantGene))
+        end
         --校验目标基因是否存在
-        if gene[1] ~= targetGenes[chromosome] and gene[2] ~= targetGenes[chromosome] and bot.inventory[droneSlot][chromosome][1] ~= targetGenes[chromosome] and bot.inventory[droneSlot][chromosome][2] ~= targetGenes[chromosome] 
+        if gene[1] ~= targetGenes[chromosome] and gene[2] ~= targetGenes[chromosome] and droneGene[1] ~= targetGenes[chromosome] and droneGene[2] ~= targetGenes[chromosome]
         --and bot.inventory[assistantDroneSlot][chromosome][1] ~=  targetGenes[chromosome] and bot.inventory[assistantDroneSlot][chromosome][2] ~= targetGenes[chromosome] or bot.inventory[assistantDroneSlot][chromosome][1] ~= bot.inventory[assistantDroneSlot][chromosome][2] then
-        and bot.inventory[assistantDroneSlot][chromosome][1] ~= targetGenes[chromosome] and bot.inventory[assistantDroneSlot][chromosome][2] ~= targetGenes[chromosome] then--初始凛冬雄蜂不纯合的临时解决方案，就这么先跑着吧，哪天出问题了再改
-            error("错误的调用strategy.purify("..tostring(princessSlot)..","..tostring(droneSlot)..","..tostring(chromosome).."="..tostring(targetGenes[chromosome])..")")
+        and assistantGene[1] ~= targetGenes[chromosome] and assistantGene[2] ~= targetGenes[chromosome] then--初始凛冬雄蜂不纯合的临时解决方案
+            error("purify target gene missing: chromosome=" .. tostring(chromosome)
+                .. ", target=" .. tostring(targetGenes[chromosome])
+                .. ", princess=" .. formatGene(gene)
+                .. ", drone=" .. formatGene(droneGene)
+                .. ", assistant=" .. formatGene(assistantGene))
         --分类
-        elseif chromosome ~= "fertility" and not(gene[1] == targetGenes[chromosome] and gene[2] == targetGenes[chromosome] and bot.inventory[droneSlot][chromosome][1] == targetGenes[chromosome]
-        and bot.inventory[droneSlot][chromosome][2] == targetGenes[chromosome] and bot.inventory[assistantDroneSlot][chromosome][1] == targetGenes[chromosome]) then
-            if bot.inventory[assistantDroneSlot][chromosome][1] == targetGenes[chromosome] then
+        elseif chromosome ~= "fertility" and not(gene[1] == targetGenes[chromosome] and gene[2] == targetGenes[chromosome] and droneGene[1] == targetGenes[chromosome]
+        and droneGene[2] == targetGenes[chromosome] and assistantGene[1] == targetGenes[chromosome]) then
+            if assistantGene[1] == targetGenes[chromosome] then
                 table.insert(templateGenes, chromosome)
             else
                 table.insert(newGenes, chromosome)
