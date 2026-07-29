@@ -26,7 +26,7 @@ local lifespanLevel = { ["forestry.lifespanShortest"]=1, ["forestry.lifespanShor
 --工作速度：1-最慢，2-较慢，3-慢速，4-一般，5-快速，6-较快，7-最快，8-急速
 local speedLevel = { ["forestry.speedSlowest"]=1, ["forestry.speedSlower"]=2, ["forestry.speedSlow"]=3, ["forestry.speedNormal"]=4, ["forestry.speedFast"]=5, ["forestry.speedFaster"]=6, ["forestry.speedFastest"]=7, ["magicbees.speedBlinding"]=8 }
 --授粉速度：1-最慢，2-较慢，3-慢速，4-平均，5-快速，6-较快，7-最快，8-最大速度
-local floweringLevel = { ["forestry.floweringSlowest"]=1, ["forestry.floweringSlower"]=2, ["forestry.floweringSlow"]=3, ["forestry.floweringNormal"]=4, ["forestry.floweringFast"]=5, ["forestry.floweringFaster"]=6, ["forestry.floweringFastest"]=7, ["forestry.floweringMaximum"]=8 }
+local floweringLevel = { ["forestry.floweringSlowest"]=1, ["forestry.floweringSlower"]=2, ["forestry.floweringSlow"]=3, ["forestry.floweringAverage"]=4, ["forestry.floweringNormal"]=4, ["forestry.floweringFast"]=5, ["forestry.floweringFaster"]=6, ["forestry.floweringFastest"]=7, ["forestry.floweringMaximum"]=8 }
 --生育能力：1x，2x，3x，4x
 local fertilityLevel = { ["forestry.fertilityLow"]=1, ["forestry.fertilityNormal"]=2, ["forestry.fertilityHigh"]=3, ["forestry.fertilityMaximum"]=4 }
 local fertilityDominance = { ["forestry.fertilityLow"]=true, ["forestry.fertilityNormal"]=true }
