@@ -917,6 +917,10 @@ function M.newSpecies(species, mutation)--突变新品种并优化基因
     end
     allele1Slot = bot.checkItem({name="Forestry:beeDroneGE",tag=allele1Tag}, 16)
     allele2Slot = bot.checkItem({name="Forestry:beeDroneGE",tag=allele2Tag}, 16)
+    if mutation.parents[1] == mutation.parents[2] then
+        allele1Slot = allele1Slot or allele2Slot
+        allele2Slot = allele2Slot or allele1Slot
+    end
     if not allele1Slot and not allele2Slot then
         error(string.format("突变%s：无法从ME取得两个亲本雄蜂（%s、%s）；不需要提前准备%s蜂", mutation.name, formatParent(1), formatParent(2), mutation.name))
     end
