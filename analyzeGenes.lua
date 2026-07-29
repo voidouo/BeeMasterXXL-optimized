@@ -101,7 +101,7 @@ local function analyzeBee(stack)--返回值只有部分基因能正确表示显�
             if next(genes) then
                 error("蜜蜂NBT数据格式错误")
             end
-            return getOriginalGenes(stack.name, t.value.UID0.value, t.value.UID1.value)
+            return getOriginalGenes(stack, t.value.UID0.value, t.value.UID1.value)
         end
         genes[t.value.Slot.value] = { t.value.UID0.value, t.value.UID1.value }
     end

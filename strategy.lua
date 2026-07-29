@@ -826,9 +826,21 @@ end
 
 function M.newSpecies(species, mutation)--突变新品种并优化基因
     --校验输入
+    local function formatParent(parentIndex)
+        local parentSpecies = mutation.parents[parentIndex]
+        local definition = mutations[parentSpecies]
+        local name = definition and (definition.name or definition[1] and definition[1].name)
+        return name and (name.."（"..parentSpecies.."）") or parentSpecies
+    end
+    local function missingParentMessage(tag1, tag2)
+        local missing = {}
+        if not tag1 then table.insert(missing, formatParent(1)) end
+        if not tag2 then table.insert(missing, formatParent(2)) end
+        return string.format("突变%s：ME网络中找不到纯合亲本雄蜂：%s；不需要提前准备%s蜂", mutation.name, table.concat(missing, "、"), mutation.name)
+    end
     local allele1Tag, allele2Tag = beeData.getDroneTag(mutation.parents[1]), beeData.getDroneTag(mutation.parents[2])
     if not allele1Tag or not allele2Tag then
-        error(string.format("错误的调用strategy.newSpecies(%s, %s)，突变所需的亲本品种不存在",species, mutation.name))
+        error(missingParentMessage(allele1Tag, allele2Tag))
     end
     if not mutation.dimension then
         local function confirmMutation()
@@ -891,19 +903,63 @@ function M.newSpecies(species, mutation)--突变新品种并优化基因
     if not princessSlot then
         error(string.format("突变%s：无法获取公主蜂", mutation.name))
     end
-    local isPrincessParent
-    if bot.inventory[princessSlot].species[1] == mutation.parents[1] and bot.inventory[princessSlot].species[2] == mutation.parents[1] then
-        isPrincessParent = 1
-    elseif bot.inventory[princessSlot].species[1] == mutation.parents[2] and bot.inventory[princessSlot].species[2] == mutation.parents[2] then
-        isPrincessParent = 2
+    local function getPrincessParent()
+        local princess = bot.inventory[princessSlot]
+        if princess.species[1] == mutation.parents[1] and princess.species[2] == mutation.parents[1] then
+            return 1
+        elseif princess.species[1] == mutation.parents[2] and princess.species[2] == mutation.parents[2] then
+            return 2
+        end
     end
     allele1Tag, allele2Tag = beeData.getDroneTag(mutation.parents[1]), beeData.getDroneTag(mutation.parents[2])
-    local operations, exchanged = getOperations(isPrincessParent, isTemplatedGenes(bot.inventory[princessSlot].tag), isTemplatedGenes(allele1Tag), isTemplatedGenes(allele2Tag))
+    if not allele1Tag or not allele2Tag then
+        error(missingParentMessage(allele1Tag, allele2Tag))
+    end
     allele1Slot = bot.checkItem({name="Forestry:beeDroneGE",tag=allele1Tag}, 16)
     allele2Slot = bot.checkItem({name="Forestry:beeDroneGE",tag=allele2Tag}, 16)
     if not allele1Slot and not allele2Slot then
-        error(string.format("突变%s：缺乏必需的亲本雄蜂", mutation.name))
+        error(string.format("突变%s：无法从ME取得两个亲本雄蜂（%s、%s）；不需要提前准备%s蜂", mutation.name, formatParent(1), formatParent(2), mutation.name))
     end
+    local function princessCarries(species)
+        local genes = bot.inventory[princessSlot] and bot.inventory[princessSlot].species
+        return genes and (genes[1] == species or genes[2] == species)
+    end
+    local function recoverMissingParent(parentIndex, droneSlot)
+        if droneSlot then
+            return droneSlot
+        end
+        local parentSpecies = mutation.parents[parentIndex]
+        if not princessCarries(parentSpecies) then
+            error(string.format("突变%s：无法从ME取得亲本雄蜂%d：%s；不需要提前准备%s蜂", mutation.name, parentIndex, formatParent(parentIndex), mutation.name))
+        end
+        local targetGenes = beeData.getTargetGenes(parentSpecies)
+        for _, chromosome in pairs(chromosomeList) do
+            local targetGene = targetGenes[chromosome]
+            local princessGene = getGene(princessSlot, chromosome)
+            local assistantGene = getGene(assistantDroneSlot, chromosome)
+            local princessHasGene = princessGene and (princessGene[1] == targetGene or princessGene[2] == targetGene)
+            local assistantHasGene = assistantGene and (assistantGene[1] == targetGene or assistantGene[2] == targetGene)
+            if not princessHasGene and not assistantHasGene then
+                error(string.format("突变%s：当前公主蜂和样板雄蜂缺少亲本%d的目标基因 %s=%s；请在ME中提供至少1只纯合%s雄蜂", mutation.name, parentIndex, chromosome, tostring(targetGene), formatParent(parentIndex)))
+            end
+        end
+        print(string.format("未取得亲本雄蜂%d，正在用当前公主蜂繁殖：%s", parentIndex, formatParent(parentIndex)))
+        local recoveredSlot
+        recoveredSlot, princessSlot = M.purify(princessSlot, assistantDroneSlot, targetGenes, assistantDroneSlot, ":recover"..parentIndex)
+        if not recoveredSlot then
+            beeData.updateUsingPrincess(princessSlot)
+            error(string.format("突变%s：繁殖亲本雄蜂%d失败：%s", mutation.name, parentIndex, formatParent(parentIndex)))
+        end
+        assistantDroneSlot = M.getAssistantDrones()--[[@as number]]
+        return recoveredSlot
+    end
+    if not allele1Slot then
+        allele1Slot = recoverMissingParent(1, allele1Slot)
+    elseif not allele2Slot then
+        allele2Slot = recoverMissingParent(2, allele2Slot)
+    end
+    local isPrincessParent = getPrincessParent()
+    local operations, exchanged = getOperations(isPrincessParent, isTemplatedGenes(bot.inventory[princessSlot].tag), isTemplatedGenes(bot.inventory[allele1Slot].tag), isTemplatedGenes(bot.inventory[allele2Slot].tag))
     for _, operation in ipairs(operations) do
         if operation == "purify(1)" then
             allele1Slot, princessSlot = M.purify(princessSlot, allele1Slot, beeData.getTargetGenes(mutation.parents[1]), assistantDroneSlot, ":allele1")
@@ -922,7 +978,7 @@ function M.newSpecies(species, mutation)--突变新品种并优化基因
     if exchanged then
         if mutation.parents[1] == mutation.parents[2] then
             allele1Slot = allele2Slot
-        elseif allele2Slot ~= assistantDroneSlot then
+        elseif allele2Slot and allele2Slot ~= assistantDroneSlot then
             robot.select(allele2Slot)
             upgrade_me.sendItems()
         end
@@ -930,7 +986,7 @@ function M.newSpecies(species, mutation)--突变新品种并优化基因
     else
         if mutation.parents[1] == mutation.parents[2] then
             allele2Slot = allele1Slot
-        elseif allele1Slot ~= assistantDroneSlot then
+        elseif allele1Slot and allele1Slot ~= assistantDroneSlot then
             robot.select(allele1Slot)
             upgrade_me.sendItems()
         end

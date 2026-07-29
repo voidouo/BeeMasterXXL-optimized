@@ -29,6 +29,7 @@ function M.updateInventory(_, slot)
         else
             M.inventory[slot] = stack
             M.inventory[slot].type = "others"
+            M.inventory[slot].geneError = tostring(result)
         end
         M.inventory[slot].inventoryLabel = M.inventoryLabel
     else
@@ -38,6 +39,19 @@ function M.updateInventory(_, slot)
     return true
 end
 event.listen("inventory_changed", M.updateInventory)
+
+local function waitForInventoryItem(slot)
+    for _ = 1, 20 do
+        if M.inventory[slot] and robot.count(slot) > 0 then
+            return true
+        end
+        os.sleep(0.05)
+        -- inventory_changed can arrive late on a busy server. Refreshing the
+        -- requested slot also makes this reliable when that event is delayed.
+        M.updateInventory(nil, slot)
+    end
+    return M.inventory[slot] ~= nil and robot.count(slot) > 0
+end
 
 --robot库物品栏操作函数重定向
 local t, e = robot.transferTo, inventory_controller.equip
@@ -320,7 +334,7 @@ function M.checkItem(filter, request)
     end
     if stack then
         upgrade_me.requestItems(database.address, 1, request - count)
-        if M.inventory[targetSlot] then
+        if waitForInventoryItem(targetSlot) then
             return targetSlot
         end
     end
@@ -386,7 +400,7 @@ function M.checkItemByTag(filter, request)
         request = math.min(request, selectedEntry.maxSize or 64)
     end
     upgrade_me.requestItems(database.address, dbIdx, request - count)
-    if M.inventory[targetSlot] then
+    if waitForInventoryItem(targetSlot) then
         return targetSlot
     end
     return nil
