@@ -227,7 +227,8 @@ end
 function M.selectEmptySlot()
     for i=1,inventorySize do
         if not M.inventory[i] and robot.count(i) == 0 then
-            return robot.select(i)
+            robot.select(i)
+            return i
         end
     end
     return nil
@@ -235,7 +236,8 @@ end
 function M.selectUsedSlot()
     for i=1,inventorySize do
         if M.inventory[i] and robot.count(i) > 0 then
-            return robot.select(i)
+            robot.select(i)
+            return i
         end
     end
     return nil

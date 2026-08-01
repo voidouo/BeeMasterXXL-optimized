@@ -35,6 +35,12 @@ frames = {
 
 如果当前整合包的狂热框架注册名不同，只修改 `item.name`。不需要框架时将 `enabled` 设为 `false`。
 
+## 诱变机配置
+
+`mutatron.lua` 会让机器人在固定坐标操作 Gendustry 诱变机。坐标以机器人初始充电器为原点，机器位于 `y=1`、机器人站在 `y=2`；默认示例坐标为 `(6,1,0)`，放置机器后请按实际位置修改 `config.lua` 的 `mutatron.position`。如果机器下方已有已知基石，可把它填入 `mutatron.initialFoundation`，否则首次遇到带基石的突变时机器人会拆机并重新放置。
+
+默认 `mode = "required"`：没有特殊条件的突变继续使用蜂箱；带 `foundation`、`dimension` 或 `requiredMutatron=true` 的突变自动使用诱变机，机器人不需要跨星球；`disabledMutatron=true` 的突变仍按原流程手动处理。需要基石时，机器人会从 ME 取出基石，临时拆下机器，将基石放到机器下方，再放回机器。诱变机应提前接好电力和 Mutagen 管路，并准备 `gendustry:Labware`。
+
 ## 失败诊断
 
 程序现在会区分“ME 查询为空”和“数据库无法读取完整 NBT”。如果仍有错误，请先确认目标亲本蜂已经存入同一个 ME 网络，并且网络区块保持加载。

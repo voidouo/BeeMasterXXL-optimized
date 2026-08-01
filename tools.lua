@@ -28,6 +28,8 @@ function M.swingDown(tool)
         end
         robot.useDown()
         bot.inventory[0] = nil
+    elseif tool == "waterbucket" or tool == "wand" then
+        return M.swingDown(nil)
     elseif tool == nil then
         if not bot.inventory[0] or bot.inventory[0].name ~= "gregtech:gt.Tool_Vajra" then
             robot.select(
@@ -91,6 +93,13 @@ function M.placeDown(item)
             bot.equip()
             robot.useDown()
             bot.inventory[0] = {name = "minecraft:bucket"}
+        elseif item.tool ~= "cell" then
+            robot.select(
+                doUntil(function()
+                    return bot.checkItem({name = item.name, damage = item.damage}, 1)
+                end, "缂哄皯"..(item.label or item.name))
+            )
+            robot.placeDown()
         else
             error("错误的调用tools.placeDown()")
         end
