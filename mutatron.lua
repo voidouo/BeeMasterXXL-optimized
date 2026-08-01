@@ -139,6 +139,28 @@ placeMachine = function()
     refreshSlot(slot)
 end
 
+-- On the first run, place the requested foundation before placing the
+-- Mutatron itself. This avoids placing a machine on an unknown floor block
+-- and then immediately having to dismantle it again.
+local function placeFoundationBeforeMachine(targetFoundation)
+    if not targetFoundation then
+        error("缺少诱变机所需的突变基石")
+    end
+
+    bot.moveYTo(machineY)
+    if robot.detectDown() then
+        -- The block below an empty station is unknown, so use the precision
+        -- mining tool rather than the placement tool (which may be a bucket).
+        tools.swingDown()
+    end
+    if robot.detectDown() then
+        error("无法清理诱变机下方的旧方块；请检查工具或手动清空该位置")
+    end
+
+    tools.placeDown(targetFoundation)
+    bot.moveYTo(robotY)
+end
+
 -- Foundation blocks are placed below the machine. Rebuilding is only done
 -- when the required block changes, so a fixed machine is left in place.
 local function rebuildMachine(targetFoundation, removeBlock)
@@ -193,12 +215,21 @@ end
 local function prepareFoundation(targetFoundation)
     if not foundationKnown then
         if targetFoundation then
-            if not config.rebuildOnFirstFoundation then
-                error("首次使用需要更换诱变机下方基石，请将 config.mutatron.rebuildOnFirstFoundation 设为 true")
+            goAboveMachine()
+            if autoPlace and not hasMachine() then
+                -- The station is empty: put the foundation on the floor first,
+                -- then place the machine one block above it.
+                placeFoundationBeforeMachine(targetFoundation)
+                placeMachine()
+                ensureMachine()
+            else
+                if not config.rebuildOnFirstFoundation then
+                    error("首次使用需要更换诱变机下方基石，请将 config.mutatron.rebuildOnFirstFoundation 设为 true")
+                end
+                -- A machine already exists, so it must be removed before the
+                -- unknown block below it can be replaced.
+                rebuildMachine(targetFoundation, true)
             end
-            -- The existing block is unknown on the first run, so remove it
-            -- before placing the requested foundation.
-            rebuildMachine(targetFoundation, true)
         else
             goAboveMachine()
             ensureMachine()
