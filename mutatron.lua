@@ -219,6 +219,9 @@ local function prepareFoundation(targetFoundation)
             if autoPlace and not hasMachine() then
                 -- The station is empty: put the foundation on the floor first,
                 -- then place the machine one block above it.
+                if not bot.checkItem(machine, 1) then
+                    error("ME 中缺少 gendustry:Mutatron，无法先放置突变基石")
+                end
                 placeFoundationBeforeMachine(targetFoundation)
                 placeMachine()
                 ensureMachine()
