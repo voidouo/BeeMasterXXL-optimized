@@ -19,6 +19,7 @@ return{
     },
     ["worldAccelerator_tier"] = 5,
     ["frames"] = {enabled = true, item = {name = "MagicBees:frameFurious", damage = 0}, count = 1, slots = {3, 4, 5}},
+    ["initialDirection"] = {x = -1, z = 0},
     ["mutatron"] = {
         -- 诱变机坐标相对于机器人初始充电器位置；这是示例坐标，请按你的实际摆放修改。
         position = {x = 6, y = 1, z = 0},

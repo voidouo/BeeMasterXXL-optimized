@@ -7,6 +7,7 @@ local event = require("event")
 
 local analyzeGenes = require("analyzeGenes")
 local me = require("me")
+local config = require("config")
 
 local inventory_controller = component.inventory_controller
 local upgrade_me = component.upgrade_me
@@ -95,7 +96,15 @@ for _, pack in pairs(inventoryChangerList) do--对于可能改变物品栏的函
 end
 
 --robot库移动函数重定向
-local position,direction = {x=0,y=1,z=0},{x=0,z=-1}
+local initialDirection = config.initialDirection or {x=0, z=-1}
+local direction = {
+    x = tonumber(initialDirection.x) or 0,
+    z = tonumber(initialDirection.z) or -1
+}
+if math.abs(direction.x) + math.abs(direction.z) ~= 1 or direction.x * direction.z ~= 0 then
+    error("config.initialDirection must be one cardinal direction, e.g. {x=-1,z=0}")
+end
+local position = {x=0,y=1,z=0}
 local f, b, u, d, l, r = robot.forward, robot.back, robot.up, robot.down, robot.turnLeft, robot.turnRight
 function M.up()
     while not u() do
