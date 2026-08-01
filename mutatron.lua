@@ -27,6 +27,7 @@ local labware = config.labware or {name = "gendustry:Labware", damage = 0}
 local currentFoundation = config.initialFoundation
 local foundationKnown = currentFoundation ~= nil
 local active = false
+local autoPlace = config.autoPlace ~= false
 
 local function sameItem(left, right)
     if not left or not right then return left == right end
@@ -53,7 +54,14 @@ local function hasMachine()
     return name:lower():find("mutatron", 1, true) ~= nil
 end
 
+local placeMachine
+
 local function ensureMachine()
+    if not hasMachine() then
+        if autoPlace then
+            placeMachine()
+        end
+    end
     if not hasMachine() then
         error(string.format(
             "诱变机坐标 (%d,%d,%d) 没有可访问的 Gendustry Mutatron；请确认机器在机器人正下方",
@@ -119,7 +127,7 @@ local function removeFoundation(tool)
     end
 end
 
-local function placeMachine()
+placeMachine = function()
     local slot = bot.checkItem(machine, 1)
     if not slot then
         error("缺少 gendustry:Mutatron，无法重新放回诱变机")

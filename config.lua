@@ -21,10 +21,11 @@ return{
     ["frames"] = {enabled = true, item = {name = "MagicBees:frameFurious", damage = 0}, count = 1, slots = {3, 4, 5}},
     ["mutatron"] = {
         -- 诱变机坐标相对于机器人初始充电器位置；这是示例坐标，请按你的实际摆放修改。
-        position = {x = 5, y = 3, z = -2},
+        position = {x = 0, y = 1, z = 1},
         -- 机器人站在诱变机上方一格，机器本体位于 y=1。
-        robotY = 4,
+        robotY = 2,
         enabled = true,
+        autoPlace = true,
         -- "required"：有突变基石、特殊维度或 requiredMutatron=true 时使用。
         -- 改成 "all" 后，没有特殊条件的普通突变也会走诱变机。
         mode = "required",
