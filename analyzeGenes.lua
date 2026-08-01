@@ -52,6 +52,15 @@ local function normalizeEffect(effect)
     end))
 end
 
+local function getBeeType(name)
+    if name == "Forestry:beePrincessGE" then
+        return "beePrincess"
+    elseif name == "Forestry:beeQueenGE" then
+        return "beeQueen"
+    end
+    return "beeDrone"
+end
+
 local function getOriginalGenes(stack, species, species2)
     species2 = species2 or species
     database.set(1, stack.name, 0, '{IsAnalyzed:1b,Genome:{Chromosomes:[0:{Slot:0b,UID0:"'..species..'",UID1:"'..species2..'"}]}}')
@@ -86,7 +95,7 @@ local function getOriginalGenes(stack, species, species2)
         nocturnal = { individual.active.nocturnal, individual.inactive.nocturnal },--夜行性
         tolerantFlyer = { individual.active.tolerantFlyer, individual.inactive.tolerantFlyer },--耐雨飞行性
         caveDwelling = { individual.active.caveDwelling, individual.inactive.caveDwelling },--穴居性
-        type = stack.name == "Forestry:beePrincessGE" and "beePrincess" or "beeDrone",--公主蜂/雄蜂
+        type = getBeeType(stack.name),--公主蜂/蜂后/雄蜂
     }
 end
 
@@ -157,12 +166,12 @@ local function analyzeBee(stack)--返回值只有部分基因能正确表示显�
         nocturnal = { genes[5][1] == "forestry.boolTrue", genes[5][2] == "forestry.boolTrue" },--夜行性
         tolerantFlyer = { genes[8][1] == "forestry.boolTrue", genes[8][2] == "forestry.boolTrue" },--耐雨飞行性
         caveDwelling = { genes[9][1] == "forestry.boolTrue", genes[9][2] == "forestry.boolTrue" },--穴居性
-        type = stack.name == "Forestry:beePrincessGE" and "beePrincess" or "beeDrone",--公主蜂/雄蜂
+        type = getBeeType(stack.name),--公主蜂/蜂后/雄蜂
     }
 end
 
 local analyzeGenes = function(stack)
-    if stack.name == "Forestry:beePrincessGE" or stack.name == "Forestry:beeDroneGE" then
+    if stack.name == "Forestry:beePrincessGE" or stack.name == "Forestry:beeQueenGE" or stack.name == "Forestry:beeDroneGE" then
         return analyzeBee(stack)
     else
         error("错误的调用analyzeGenes()")

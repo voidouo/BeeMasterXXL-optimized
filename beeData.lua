@@ -122,8 +122,8 @@ function M.updateAssistantDrone(slot, force)
 end
 
 function M.updateAssistantPrincess(slot, exchangeTag)
-    if not bot.inventory[slot] or bot.inventory[slot].name ~= "Forestry:beePrincessGE" then
-        error("错误的调用beeData.updateAssistantPrincess()，物品栏第"..slot.."格不是公主蜂")
+    if not bot.inventory[slot] or (bot.inventory[slot].type ~= "beePrincess" and bot.inventory[slot].type ~= "beeQueen") then
+        error("错误的调用beeData.updateAssistantPrincess()，物品栏第"..slot.."格不是公主蜂或蜂后")
     end
     if not data.assistantDroneTag then
         error("错误的调用beeData.updateAssistantPrincess()，尚未设置辅助雄蜂")
@@ -143,8 +143,8 @@ function M.updateAssistantPrincess(slot, exchangeTag)
 end
 
 function M.updateUsingPrincess(slot)
-    if not bot.inventory[slot] or bot.inventory[slot].name ~= "Forestry:beePrincessGE" then
-        error("错误的调用beeData.updateUsingPrincess()，物品栏第"..slot.."格不是公主蜂")
+    if not bot.inventory[slot] or (bot.inventory[slot].type ~= "beePrincess" and bot.inventory[slot].type ~= "beeQueen") then
+        error("错误的调用beeData.updateUsingPrincess()，物品栏第"..slot.."格不是公主蜂或蜂后")
     end
     if bot.inventory[slot].isNatural then
         data.usingPrincessTag = bot.inventory[slot].tag
@@ -244,37 +244,65 @@ local function isPrincessAvailable(tag)
     return true
 end
 
-function M.getPrincessTag(isNatural)
-    if isNatural and data.usingPrincessTag and bot.checkItem({name="Forestry:beePrincessGE",tag=data.usingPrincessTag}) then
-        return data.usingPrincessTag
+local femaleBeeNames = {"Forestry:beePrincessGE", "Forestry:beeQueenGE"}
+
+local function getFemaleFilter(tag)
+    if not tag then
+        return nil
     end
-    local princess = doUntil(function()
-        local princessFilter = {name = "Forestry:beePrincessGE"}
-        local princessList = me.enrichItems(me.getItems(princessFilter), princessFilter)
-        for _, p in pairs(princessList) do
-            if p.individual and p.individual.isNatural == (isNatural == true) and isPrincessAvailable(p.tag) then
-                return p
-            end
+    for _, name in ipairs(femaleBeeNames) do
+        if bot.checkItem({name = name, tag = tag}) then
+            return {name = name, tag = tag}
         end
-        for _, item in pairs(bot.inventory) do
-            if item and item.name == "Forestry:beePrincessGE" and item.isNatural == (isNatural == true) and isPrincessAvailable(item.tag) then
-                return item
+    end
+    return nil
+end
+
+-- Return the actual item ID as well as the tag. A queen and a princess can
+-- share a genome tag, but ME still needs the correct item name to extract it.
+function M.getPrincessFilter(isNatural)
+    if isNatural and data.usingPrincessTag then
+        local filter = getFemaleFilter(data.usingPrincessTag)
+        if filter then
+            return filter
+        end
+    end
+    local female = doUntil(function()
+        -- Prefer a princess when both forms are available. A queen is a
+        -- valid fallback for worlds where the previous run left only queens
+        -- in the ME network.
+        for _, name in ipairs(femaleBeeNames) do
+            local filter = {name = name}
+            local femaleList = me.enrichItems(me.getItems(filter), filter)
+            for _, item in pairs(femaleList) do
+                if item.individual and item.individual.isNatural == (isNatural == true) and isPrincessAvailable(item.tag) then
+                    return {name = name, tag = item.tag}
+                end
+            end
+            for _, item in pairs(bot.inventory) do
+                if item and item.name == name and item.isNatural == (isNatural == true) and isPrincessAvailable(item.tag) then
+                    return {name = name, tag = item.tag}
+                end
             end
         end
     end, "缺少"..(isNatural and "始祖" or "卑贱").."种公主蜂")
-    local tag = princess.tag
+    local tag = female.tag
     if isNatural then
         data.usingPrincessTag = tag
         saveData()
     end
-    return tag
+    return female
+end
+
+function M.getPrincessTag(isNatural)
+    return M.getPrincessFilter(isNatural).tag
 end
 
 function M.getAssistantBeesTag()
     if not data.assistantDroneTag or not bot.checkItem({name = "Forestry:beeDroneGE", tag = data.assistantDroneTag}) then
         error("尚未设置辅助雄蜂")
     end
-    if not data.assistantPrincessTag or not bot.checkItem({name = "Forestry:beePrincessGE", tag = data.assistantPrincessTag}) then
+    if not data.assistantPrincessTag or not bot.checkFemaleItem(data.assistantPrincessTag) then
         return data.assistantDroneTag
     end
     return data.assistantDroneTag, data.assistantPrincessTag

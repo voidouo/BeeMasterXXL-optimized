@@ -14,6 +14,10 @@ local beekeeper = component.beekeeper
 
 M.isActive = false
 
+local function isFemaleBee(item)
+    return item and (item.type == "beePrincess" or item.type == "beeQueen")
+end
+
 --载入蜂箱数据
 local apiaryList, worldAccelerator_tier = {}, 0
 do
@@ -147,7 +151,7 @@ end
 
 --根据公主蜂基因、突变条件检查是否有可用的蜂箱
 function M.checkNextGeneration(princessSlot, mutation)
-    if not bot.inventory[princessSlot] or bot.inventory[princessSlot].type ~= "beePrincess" then
+    if not isFemaleBee(bot.inventory[princessSlot]) then
         error(string.format("错误的调用apiary.checkNextGeneration(%d)",princessSlot))
     end
     local availableApiaryList = {}
@@ -249,12 +253,22 @@ function M.nextGeneration(princessSlot, droneSlot, mutation)
         end
         return false
     end
+    local function collectQueen()
+        -- The queen left in slot 1 belongs to the completed cycle. Remove it
+        -- before returning so it cannot block the next princess input.
+        if inventory_controller.getStackInSlot(0, 1) then
+            if not bot.selectEmptySlot() or not inventory_controller.suckFromSlot(0, 1) then
+                error("apiary.nextGeneration()无法取出蜂箱中的蜂后")
+            end
+        end
+    end
     while true do
         doUntil(function()
             return beekeeper.canWork(0) or collectOutput()
         end, "蜜蜂无法生长，请补全缺失的生长条件")
         if collectOutput() then
             collectOutput()
+            collectQueen()
             break
         end
         os.sleep(1)

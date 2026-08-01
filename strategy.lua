@@ -15,6 +15,10 @@ local me = require("me")
 
 local chromosomeList = {"species", "speed", "lifespan", "fertility", "flowering", "flowerProvider", "territory", "effect", "temperatureTolerance", "humidityTolerance", "nocturnal", "tolerantFlyer", "caveDwelling"}
 
+local function isFemaleBee(item)
+    return item and (item.type == "beePrincess" or item.type == "beeQueen")
+end
+
 local function getGene(slot, chromosome)
     local item = slot and bot.inventory[slot]
     local gene = item and item[chromosome]
@@ -36,7 +40,7 @@ function M.mutate(princessSlot, droneSlot, targetSpecies, mutation)--单步突�
     --突变过程存在种族基因存在丢失的可能，此时将返回nil（附带退回的备选雄蜂槽位），待上级函数重新获取可用母本后继续。
     --由于退出时不丢弃已有雄蜂，且已有雄蜂均打上了该品种基因突变标签，故可在下次突变调用中继承已有的雄蜂基因池。
     --1.校验输入
-    if bot.inventory[princessSlot].type ~= "beePrincess" or bot.inventory[droneSlot].type ~= "beeDrone" or not targetSpecies or not mutation then
+    if not isFemaleBee(bot.inventory[princessSlot]) or bot.inventory[droneSlot].type ~= "beeDrone" or not targetSpecies or not mutation then
         error(string.format("错误的调用strategy.mutate(%d, %d, %s)",princessSlot, droneSlot, mutation.name))
     end
     for _, chromosome in pairs(chromosomeList) do
@@ -84,20 +88,35 @@ function M.mutate(princessSlot, droneSlot, targetSpecies, mutation)--单步突�
             end
             princessSlot = nil
             targetBeeSlots = {}
+            local queenSlots = {}
             for _,slot in pairs(bot.getItemsWithLabel(bot.inventoryLabel)) do
-                if bot.inventory[slot].name == "Forestry:beePrincessGE" then
-                    if princessSlot then
-                        princessSlot = "错误：出现了两只公主蜂"
-                        break
-                    end
-                    princessSlot = slot
-                    if bot.inventory[slot].species[1] == targetSpecies or bot.inventory[slot].species[2] == targetSpecies then
-                        table.insert(targetBeeSlots, 1, slot)
+                if isFemaleBee(bot.inventory[slot]) then
+                    if bot.inventory[slot].type == "beePrincess" then
+                        if princessSlot then
+                            princessSlot = "错误：出现了两只公主蜂"
+                            break
+                        end
+                        princessSlot = slot
+                    else
+                        table.insert(queenSlots, slot)
                     end
                 end
                 if bot.inventory[slot].name == "Forestry:beeDroneGE" and (bot.inventory[slot].species[1] == targetSpecies or bot.inventory[slot].species[2] == targetSpecies) then
                     table.insert(targetBeeSlots, slot)
                 end
+            end
+            if type(princessSlot) == "number" then
+                for _, slot in ipairs(queenSlots) do
+                    robot.select(slot)
+                    upgrade_me.sendItems()
+                end
+            elseif not princessSlot and #queenSlots == 1 then
+                princessSlot = queenSlots[1]
+            elseif not princessSlot and #queenSlots > 1 then
+                princessSlot = "错误：出现了多只蜂后"
+            end
+            if type(princessSlot) == "number" and (bot.inventory[princessSlot].species[1] == targetSpecies or bot.inventory[princessSlot].species[2] == targetSpecies) then
+                table.insert(targetBeeSlots, 1, princessSlot)
             end
             if next(targetBeeSlots) and type(princessSlot) == "number" then
                 break
@@ -728,7 +747,7 @@ function M.purify(princessSlot, droneSlot, targetGenes, assistantDroneSlot, labe
 end
 
 function M.breedDrones(princessSlot, droneSlot, targetAmount)--繁殖雄蜂
-    if bot.inventory[princessSlot].type ~= "beePrincess" or bot.inventory[droneSlot].type ~= "beeDrone" then
+    if not isFemaleBee(bot.inventory[princessSlot]) or bot.inventory[droneSlot].type ~= "beeDrone" then
         error(string.format("错误的调用strategy.breedDrones(%d, %d, %d)",princessSlot, droneSlot, targetAmount))
     end
     for _, chromosome in pairs(chromosomeList) do
@@ -790,13 +809,13 @@ function M.getAssistantDrones()--获取样板雄蜂
     end
     if droneCount < 20 then
         if princess then
-            princess = bot.checkItem({name="Forestry:beePrincessGE",tag=princess}, 1)
+            princess = bot.checkFemaleItem(princess, 1)
             if not princess then
                 error("获取辅助公主蜂失败：未找到现存的辅助公主蜂")
             end
         else
             princess = beeData.getPrincessTag(true)
-            princess = bot.checkItem({name="Forestry:beePrincessGE",tag=princess}, 1)
+            princess = bot.checkFemaleItem(princess, 1)
             if not princess then
                 error("培育样板雄蜂失败：未找到可用的初始公主蜂")
             end
@@ -899,7 +918,7 @@ function M.newSpecies(species, mutation)--突变新品种并优化基因
     end
     ::GET_PARENT_BEES::
     assistantDroneSlot = M.getAssistantDrones()--[[@as number]]
-    princessSlot = bot.checkItem({name="Forestry:beePrincessGE",tag=beeData.getPrincessTag(true)}, 1)
+    princessSlot = bot.checkItem(beeData.getPrincessFilter(true), 1)
     if not princessSlot then
         error(string.format("突变%s：无法获取公主蜂", mutation.name))
     end
@@ -1072,7 +1091,7 @@ function M.optimizeSpecies(species)--优化现有品种
     if not droneSlot then
         error(string.format("错误的调用strategy.optimizeSpecies(%s)，未找到目标品种的雄蜂", species))
     end
-    local princessSlot = bot.checkItem({name="Forestry:beePrincessGE",tag=beeData.getPrincessTag(true)}, 1)
+    local princessSlot = bot.checkItem(beeData.getPrincessFilter(true), 1)
     if not princessSlot then
         error(string.format("错误的调用strategy.optimizeSpecies(%s)，缺少公主蜂", species))
     end
@@ -1324,7 +1343,7 @@ function M.initialize()--初始化至田野蜂以制造样板蜂
     while true do
         os.sleep(1)
         for _,slot in pairs(bot.getItemsWithLabel(bot.inventoryLabel)) do
-            if bot.inventory[slot].type == "beePrincess" and bot.inventory[slot].isNatural == true and hasTargetGenes(bot.inventory[slot], {species = "forestry.speciesWintry", temperatureTolerance = "BOTH_5", humidityTolerance = "BOTH_5"}) then
+            if isFemaleBee(bot.inventory[slot]) and bot.inventory[slot].isNatural == true and hasTargetGenes(bot.inventory[slot], {species = "forestry.speciesWintry", temperatureTolerance = "BOTH_5", humidityTolerance = "BOTH_5"}) then
                 princess1Slot = slot
                 break
             else
@@ -1368,7 +1387,7 @@ function M.initialize()--初始化至田野蜂以制造样板蜂
         error("初始化失败")
     end
     --同性状凛冬蜂
-    local princess2Slot = bot.checkItem({name="Forestry:beePrincessGE",tag=beeData.getPrincessTag(true)}, 1)
+    local princess2Slot = bot.checkItem(beeData.getPrincessFilter(true), 1)
     if not princess2Slot then
         error("初始化失败：ME网络内缺少初始公主蜂")
     end

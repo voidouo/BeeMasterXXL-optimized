@@ -268,7 +268,7 @@ function M.checkItem(filter, request)
     end
     --[神秘小补丁
     if filter.tag then
-        if filter.name == "Forestry:beeDroneGE" or filter.name == "Forestry:beePrincessGE" then
+        if filter.name == "Forestry:beeDroneGE" or filter.name == "Forestry:beePrincessGE" or filter.name == "Forestry:beeQueenGE" then
             local speciesGenes = analyzeGenes({name=filter.name,tag=filter.tag,individual={}}).species
             database.set(1, filter.name, 0, '{IsAnalyzed:1b,Genome:{Chromosomes:[0:{Slot:0b,UID0:"'..speciesGenes[1]..'",UID1:"'..speciesGenes[2]..'"}]}}')
             local label = database.get(1).label
@@ -402,6 +402,23 @@ function M.checkItemByTag(filter, request)
     upgrade_me.requestItems(database.address, dbIdx, request - count)
     if waitForInventoryItem(targetSlot) then
         return targetSlot
+    end
+    return nil
+end
+
+-- Find a female bee by genome tag. Forestry stores a usable princess and a
+-- finished queen as different item IDs, even though they carry the same
+-- genome. Callers that only care about the female genome should use this
+-- helper instead of hard-coding beePrincessGE.
+function M.checkFemaleItem(tag, request)
+    if not tag then
+        return nil
+    end
+    for _, name in ipairs({"Forestry:beePrincessGE", "Forestry:beeQueenGE"}) do
+        local slot = M.checkItem({name = name, tag = tag}, request)
+        if slot then
+            return slot
+        end
     end
     return nil
 end

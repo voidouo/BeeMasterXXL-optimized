@@ -89,7 +89,7 @@ function M.getInternalStack(slot)
     local controller = component.inventory_controller
     local stack = controller.getStackInInternalSlot(slot)
     if not stack then return nil end
-    local isBee = stack.name == "Forestry:beePrincessGE" or stack.name == "Forestry:beeDroneGE"
+    local isBee = stack.name == "Forestry:beePrincessGE" or stack.name == "Forestry:beeQueenGE" or stack.name == "Forestry:beeDroneGE"
     if isBee and not stack.individual and controller.storeInternal then
         pcall(M.database.clear, 1)
         local ok, stored = pcall(controller.storeInternal, slot, M.database.address, 1)

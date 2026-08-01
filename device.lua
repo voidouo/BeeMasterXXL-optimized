@@ -6,6 +6,10 @@ local apiary = require("apiary")
 
 local bot = require("bot")
 local mutations = require("mutations")
+
+local function isFemaleBee(item)
+    return item and (item.type == "beePrincess" or item.type == "beeQueen")
+end
 local function checkMutation(princessSlot, droneSlot)
     local speciesGeneList = { bot.inventory[princessSlot].species[1], bot.inventory[princessSlot].species[2], bot.inventory[droneSlot].species[1], bot.inventory[droneSlot].species[2] }
     for i=4,2,-1 do
@@ -48,7 +52,7 @@ local function chooseMethod(strategy)
 end
 
 function M.nextGeneration(princessSlot, droneSlot, mutation)
-    if not bot.inventory[princessSlot] or bot.inventory[princessSlot].type ~= "beePrincess" or not bot.inventory[droneSlot] or bot.inventory[droneSlot].type ~= "beeDrone" then
+    if not isFemaleBee(bot.inventory[princessSlot]) or not bot.inventory[droneSlot] or bot.inventory[droneSlot].type ~= "beeDrone" then
         error(string.format("错误的调用nextGeneration(%d, %d)",princessSlot, droneSlot))
     end
     local strategy = mutation or checkMutation(princessSlot, droneSlot)
