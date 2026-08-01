@@ -39,9 +39,6 @@ function M.mutate(princessSlot, droneSlot, targetSpecies, mutation)--单步突�
     if bot.inventory[princessSlot].type ~= "beePrincess" or bot.inventory[droneSlot].type ~= "beeDrone" or not targetSpecies or not mutation then
         error(string.format("错误的调用strategy.mutate(%d, %d, %s)",princessSlot, droneSlot, mutation.name))
     end
-    if mutation.requiredMutatron and not device.usesMutatron(mutation) then
-        error("该突变必须使用诱变机，但当前诱变机功能未启用")
-    end
     for _, chromosome in pairs(chromosomeList) do
         local p1, p2 = bot.inventory[princessSlot][chromosome][1], bot.inventory[princessSlot][chromosome][2]
         local d1, d2 = bot.inventory[droneSlot][chromosome][1], bot.inventory[droneSlot][chromosome][2]
@@ -72,7 +69,7 @@ function M.mutate(princessSlot, droneSlot, targetSpecies, mutation)--单步突�
     bot.inventoryLabel = "mutate:"..targetSpecies
     bot.inventory[droneSlot].inventoryLabel = bot.inventoryLabel
     local targetBeeSlots = {}
-    if mutation.dimension and not device.usesMutatron(mutation) then
+    if mutation.dimension then
     --2.执行突变(手动突变分支)
         device.destruct()
         print(mutation.name.."蜂突变仅在维度 "..mutation.dimension.." 发生，请手动前往指定维度突变，将发生突变的蜜蜂与公主蜂放回物品栏")
@@ -116,7 +113,7 @@ function M.mutate(princessSlot, droneSlot, targetSpecies, mutation)--单步突�
         end
     else
     --2.执行突变(自动突变分支)
-        if mutation.foundation and not device.usesMutatron(mutation) and not bot.checkItem({name = mutation.foundation.name, damage = mutation.foundation.damage}) then
+        if mutation.foundation and not bot.checkItem({name = mutation.foundation.name, damage = mutation.foundation.damage}) then
             doUntil(function ()
                 return bot.checkItem({name = mutation.foundation.name, damage = mutation.foundation.damage})
             end, "缺少突变所需的基石："..mutation.foundation.label)
@@ -845,7 +842,7 @@ function M.newSpecies(species, mutation)--突变新品种并优化基因
     if not allele1Tag or not allele2Tag then
         error(missingParentMessage(allele1Tag, allele2Tag))
     end
-    if not mutation.dimension or not device.usesMutatron(mutation) then
+    if not mutation.dimension then
         local function confirmMutation()
             io.write("是否继续执行突变？[Y/n]：")
             local answer = io.read()
@@ -1184,12 +1181,12 @@ function M.task(species)--制定突变链
         if not isSuitable then
             lackEnvironmentConditions[i] = missingConditions
         end
-        if mutationChain[i][2].foundation and not device.usesMutatron(mutationChain[i][2]) and not bot.checkItem({name=mutationChain[i][2].foundation.name,damage=mutationChain[i][2].foundation.damage}) then
+        if mutationChain[i][2].foundation and not bot.checkItem({name=mutationChain[i][2].foundation.name,damage=mutationChain[i][2].foundation.damage}) then
             lackFoundation[i] = mutationChain[i][2].foundation.label
         end
         for _, condition in pairs({"dimension", "date", "lunar_phase", "time"}) do
             if mutationChain[i][2][condition] then
-                if condition == "dimension" and not device.usesMutatron(mutationChain[i][2]) then
+                if condition == "dimension" then
                     requiredDimension[i] = mutationChain[i][2][condition]
                 elseif condition == "date" then
                     requiredDate[i] = mutationChain[i][2][condition]
@@ -1204,7 +1201,7 @@ function M.task(species)--制定突变链
             lackFoundation[i] = nil
             lackEnvironmentConditions[i] = nil
         end
-        if mutationChain[i][2].requiredMutatron and not device.usesMutatron(mutationChain[i][2]) then
+        if mutationChain[i][2].requiredMutatron then
             requiredMutatron[i] = true
         end
     end
