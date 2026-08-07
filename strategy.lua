@@ -73,7 +73,8 @@ function M.mutate(princessSlot, droneSlot, targetSpecies, mutation)--单步突�
     bot.inventoryLabel = "mutate:"..targetSpecies
     bot.inventory[droneSlot].inventoryLabel = bot.inventoryLabel
     local targetBeeSlots = {}
-    if mutation.dimension then
+    local usesMutatron = device.usesMutatron(mutation)
+    if mutation.dimension and not usesMutatron then
     --2.执行突变(手动突变分支)
         device.destruct()
         print(mutation.name.."蜂突变仅在维度 "..mutation.dimension.." 发生，请手动前往指定维度突变，将发生突变的蜜蜂与公主蜂放回物品栏")
@@ -132,24 +133,48 @@ function M.mutate(princessSlot, droneSlot, targetSpecies, mutation)--单步突�
         end
     else
     --2.执行突变(自动突变分支)
-        if mutation.foundation and not bot.checkItem({name = mutation.foundation.name, damage = mutation.foundation.damage}) then
+        if mutation.foundation and not usesMutatron and not bot.checkItem({name = mutation.foundation.name, damage = mutation.foundation.damage}) then
             doUntil(function ()
                 return bot.checkItem({name = mutation.foundation.name, damage = mutation.foundation.damage})
             end, "缺少突变所需的基石："..mutation.foundation.label)
         end
-        local function nextGeneration(droneSlot)--追踪公主蜂
-            device.nextGeneration(princessSlot, droneSlot, mutation)
+        local function takeNextFemale()
             princessSlot = nil
+            local queenSlots = {}
             for _,slot in pairs(bot.getItemsWithLabel(bot.inventoryLabel)) do
                 if bot.inventory[slot].type == "beePrincess" then
                     if princessSlot then
                         error("错误的调用strategy.mutate().nextGeneration，突变过程中出现了两只公主蜂")
                     end
                     princessSlot = slot
+                elseif bot.inventory[slot].type == "beeQueen" then
+                    table.insert(queenSlots, slot)
                 end
+            end
+            if princessSlot then
+                for _, slot in ipairs(queenSlots) do
+                    robot.select(slot)
+                    upgrade_me.sendItems()
+                end
+            elseif #queenSlots == 1 then
+                princessSlot = queenSlots[1]
+            elseif #queenSlots > 1 then
+                error("错误的调用strategy.mutate().nextGeneration，突变过程中出现了多只蜂后")
             end
             if not princessSlot then
                 error("错误的调用strategy.mutate().nextGeneration，突变过程中未找到公主蜂")
+            end
+        end
+        local function nextGeneration(droneSlot)--追踪公主蜂或诱变机产出的蜂后
+            device.nextGeneration(princessSlot, droneSlot, mutation, targetSpecies)
+            takeNextFemale()
+        end
+        -- Gendustry 的诱变机只能接受公主蜂。若上一次运行留下蜂后，先让其在蜂箱中完成一次生命周期。
+        if usesMutatron and bot.inventory[princessSlot].type == "beeQueen" then
+            device.nextGeneration(princessSlot, droneSlot)
+            takeNextFemale()
+            if bot.inventory[princessSlot].type ~= "beePrincess" then
+                error("蜂后完成生命周期后未得到公主蜂，无法输入诱变机")
             end
         end
         nextGeneration(droneSlot)
@@ -861,7 +886,7 @@ function M.newSpecies(species, mutation)--突变新品种并优化基因
     if not allele1Tag or not allele2Tag then
         error(missingParentMessage(allele1Tag, allele2Tag))
     end
-    if not mutation.dimension then
+    if not device.usesMutatron(mutation) then
         local function confirmMutation()
             io.write("是否继续执行突变？[Y/n]：")
             local answer = io.read()
@@ -1196,23 +1221,27 @@ function M.task(species)--制定突变链
     local lackFoundation, lackEnvironmentConditions, requiredDimension, requiredMutatron = {}, {}, {}, {}
     local requiredDate, requiredLunarPhase, requiredTime = {}, {}, {}
     for i = 1, #mutationChain do
-        local isSuitable, missingConditions = device.checkMutationEnvironment(mutationChain[i][2])
+        local mutation = mutationChain[i][2]
+        local usesMutatron = device.usesMutatron(mutation)
+        local isSuitable, missingConditions = device.checkMutationEnvironment(mutation)
         if not isSuitable then
             lackEnvironmentConditions[i] = missingConditions
         end
-        if mutationChain[i][2].foundation and not bot.checkItem({name=mutationChain[i][2].foundation.name,damage=mutationChain[i][2].foundation.damage}) then
-            lackFoundation[i] = mutationChain[i][2].foundation.label
+        if not usesMutatron and mutation.foundation and not bot.checkItem({name=mutation.foundation.name,damage=mutation.foundation.damage}) then
+            lackFoundation[i] = mutation.foundation.label
         end
-        for _, condition in pairs({"dimension", "date", "lunar_phase", "time"}) do
-            if mutationChain[i][2][condition] then
-                if condition == "dimension" then
-                    requiredDimension[i] = mutationChain[i][2][condition]
-                elseif condition == "date" then
-                    requiredDate[i] = mutationChain[i][2][condition]
-                elseif condition == "lunar_phase" then
-                    requiredLunarPhase[i] = mutationChain[i][2][condition]
-                elseif condition == "time" then
-                    requiredTime[i] = mutationChain[i][2][condition]
+        if not usesMutatron then
+            for _, condition in pairs({"dimension", "date", "lunar_phase", "time"}) do
+                if mutation[condition] then
+                    if condition == "dimension" then
+                        requiredDimension[i] = mutation[condition]
+                    elseif condition == "date" then
+                        requiredDate[i] = mutation[condition]
+                    elseif condition == "lunar_phase" then
+                        requiredLunarPhase[i] = mutation[condition]
+                    elseif condition == "time" then
+                        requiredTime[i] = mutation[condition]
+                    end
                 end
             end
         end
@@ -1220,7 +1249,7 @@ function M.task(species)--制定突变链
             lackFoundation[i] = nil
             lackEnvironmentConditions[i] = nil
         end
-        if mutationChain[i][2].requiredMutatron then
+        if mutation.requiredMutatron and not usesMutatron then
             requiredMutatron[i] = true
         end
     end

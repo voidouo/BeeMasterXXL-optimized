@@ -37,9 +37,9 @@ frames = {
 
 ## 诱变机配置
 
-`mutatron.lua` 会让机器人在固定坐标操作 Gendustry 诱变机。坐标以机器人初始充电器为原点，机器位于 `y=1`、机器人站在 `y=2`；默认示例坐标为 `(6,1,0)`，放置机器后请按实际位置修改 `config.lua` 的 `mutatron.position`。如果机器下方已有已知基石，可把它填入 `mutatron.initialFoundation`，否则首次遇到带基石的突变时机器人会拆机并重新放置。
+`mutatron.lua` 会让机器人在固定坐标操作 Gendustry 诱变机。坐标以机器人初始充电器为原点，机器位于 `y=1`、机器人站在 `y=2`；当前机器人朝西，默认位置是正前方的 `(0,1,-1)`。放置机器后请按实际位置修改 `config.lua` 的 `mutatron.position`。
 
-默认 `mode = "required"`：没有特殊条件的突变继续使用蜂箱；带 `foundation`、`dimension` 或 `requiredMutatron=true` 的突变自动使用诱变机，机器人不需要跨星球；`disabledMutatron=true` 的突变仍按原流程手动处理。需要基石时，机器人会从 ME 取出基石，临时拆下机器，将基石放到机器下方，再放回机器。诱变机应提前接好电力和 Mutagen 管路，并准备 `gendustry:Labware`。
+默认 `mode = "dimension"`：带 `dimension` 或 `requiredMutatron=true` 的突变自动使用诱变机，机器人不需要跨星球；普通突变和仅有基石条件的突变继续使用蜂箱。`disabledMutatron=true` 的突变仍按原流程手动处理。诱变机应提前接好电力和 Mutagen 管路，并准备 `gendustry:Labware`。
 
 ## 失败诊断
 

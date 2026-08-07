@@ -1,6 +1,7 @@
 local M = {}
 
 local apiary = require("apiary")
+local mutatron = require("mutatron")
 --local alveary = require("alveary")
 --local industrialApiary = require("industrialApiary")
 
@@ -48,28 +49,43 @@ end
 
 local function chooseMethod(strategy)
     --暂时只写了单方块蜂箱
+    if mutatron.uses(strategy) then
+        return mutatron
+    end
     return apiary
 end
 
-function M.nextGeneration(princessSlot, droneSlot, mutation)
+function M.nextGeneration(princessSlot, droneSlot, mutation, targetSpecies)
     if not isFemaleBee(bot.inventory[princessSlot]) or not bot.inventory[droneSlot] or bot.inventory[droneSlot].type ~= "beeDrone" then
         error(string.format("错误的调用nextGeneration(%d, %d)",princessSlot, droneSlot))
     end
     local strategy = mutation or checkMutation(princessSlot, droneSlot)
+    if type(strategy) == "table" and strategy.requiredMutatron and not mutatron.uses(strategy) then
+        error("该突变必须使用诱变机，但 config.mutatron.enabled=false 或它被标记为 disabledMutatron")
+    end
     --[[策略为false，忽略突变率，使寿命尽可能短
     策略为true，在突变率为0的前提下使寿命尽可能短
     策略type为table，尽可能将突变率提高到100]]
-    if not apiary.checkNextGeneration(princessSlot, strategy) then
+    local method = chooseMethod(strategy)
+    if method == apiary and not apiary.checkNextGeneration(princessSlot, strategy) then
         error("没有满足条件的蜂箱可供培育下一代")
     end
-    return chooseMethod(strategy).nextGeneration(princessSlot, droneSlot, strategy)
+    return method.nextGeneration(princessSlot, droneSlot, strategy, targetSpecies)
 end
 
 function M.checkMutationEnvironment(mutation)
+    if mutatron.uses(mutation) then
+        return true
+    end
     return apiary.checkMutationEnvironment(mutation)
 end
 
+function M.usesMutatron(mutation)
+    return mutatron.uses(mutation)
+end
+
 function M.destruct()
+    mutatron.destruct()
     apiary.destruct()
     bot.moveYTo(2)
     bot.moveXZTo(0,0)

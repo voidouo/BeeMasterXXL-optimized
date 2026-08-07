@@ -216,6 +216,7 @@ function M.nextGeneration(princessSlot, droneSlot, mutation)
     local previousLabel = bot.inventoryLabel
     bot.inventoryLabel = "apiary.nextGeneration()"
     setupApiary(availableApiary, requiredApiaryDamage, type(mutation) == "table" and mutation.foundation)
+    local femaleIsQueen = bot.inventory[princessSlot].type == "beeQueen"
     local previousFertility = bot.inventory[princessSlot].fertility[1]
     bot.moveYTo(2)
     bot.moveXZTo(table.unpack(apiaryLocationList[availableApiary]))
@@ -224,10 +225,12 @@ function M.nextGeneration(princessSlot, droneSlot, mutation)
     if not inventory_controller.dropIntoSlot(0, 1, 1) then
         error("apiary.nextGeneration()转移公主蜂失败")
     end
-    robot.select(droneSlot)
-    bot.inventory[droneSlot].size = bot.inventory[droneSlot].size - 1
-    if not inventory_controller.dropIntoSlot(0, 2, 1) then
-        error("apiary.nextGeneration()转移工蜂失败")
+    if not femaleIsQueen then
+        robot.select(droneSlot)
+        bot.inventory[droneSlot].size = bot.inventory[droneSlot].size - 1
+        if not inventory_controller.dropIntoSlot(0, 2, 1) then
+            error("apiary.nextGeneration()转移工蜂失败")
+        end
     end
     insertFrames()
     bot.selectUsedSlot()--不用robot.select(1)是为了确保相同物品能够堆叠
